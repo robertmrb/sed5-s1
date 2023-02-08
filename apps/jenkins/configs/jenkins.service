@@ -1,0 +1,13 @@
+[Unit]
+Description=Jenkins Service
+After=network.target
+
+[Service]
+Environment=JENKINS_HOME=/opt/jenkins
+User=jenkins
+Type=simple
+ExecStart=/usr/bin/java -jar -Djenkins.install.runSetupWizard=false /opt/jenkins/jenkins.war --httpPort=8080
+ExecStop=/bin/kill $MAINPID
+
+[Install]
+WantedBy=multi-user.target
