@@ -1,0 +1,48 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Install Nginx on Load Balancer Server') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.11 "sudo apt-get update && sudo apt-get install nginx -y"
+                    '''
+                }
+            }
+        }
+        stage('Configure Nginx as Load Balancer') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.11 "sudo bash -c 'cat > /etc/nginx/sites-available/default <<EOF
+                    upstream backend {
+                        server 192.168.56.12;
+                        server 192.168.56.13;
+                    }
+                    
+                    server {
+                        listen 80 default_server;
+                        listen [::]:80 default_server;
+                        
+                        location /wordpress/ {
+                            proxy_pass http://backend;
+                        }
+                    }
+                    '"
+                    '''
+                }
+            }
+        }
+        
+        stage('Restart Nginx') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.11 "sudo systemctl restart nginx"
+                    '''
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,72 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Install Nginx') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.12 "sudo apt-get update && sudo apt-get install nginx -y"
+                    '''
+                }
+            }
+        }
+        stage('Install PHP and dependencies') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.12 "sudo apt-get install php php-fpm php-mysql php-xml php-gd php-json php-curl -y"
+                    '''
+                }
+            }
+        }
+        stage('Install WordPress on Application Server 1') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.12 "sudo apt-get update && sudo apt-get install wget -y"
+                    ssh test@192.168.56.12 "wget http://wordpress.org/latest.tar.gz"
+                    ssh test@192.168.56.12 "tar -xzvf latest.tar.gz"
+                    ssh test@192.168.56.12 "sudo mv wordpress /var/www/html"
+                    ssh test@192.168.56.12 "sudo chown -R www-data:www-data /var/www/html/wordpress"
+                    '''
+                }
+            }
+        }
+        stage('Configure Nginx for WordPress') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.12 "sudo sh -c 'cat <<EOF > /etc/nginx/sites-available/default
+                    server {
+                        listen 80 default_server;
+                        listen [::]:80 default_server;
+                        
+                        root /var/www/html/wordpress;
+                        index index.php;
+                        
+                        location / {
+                            try_files \$uri \$uri/ /index.php?\$args;
+                        }
+                        
+                        location ~ \.php$ {
+                            include snippets/fastcgi-php.conf;
+                            fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+                        }
+                    }
+                    '"
+                    '''
+                }
+            }
+        }
+        stage('Restart Nginx') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.12 "sudo systemctl restart nginx"
+                    '''
+                }
+            }
+        }
+    }
+}    
