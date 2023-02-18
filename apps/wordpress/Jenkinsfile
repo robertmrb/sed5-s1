@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     stages {
-        stage('Install Nginx') {
+        stage('Install Nginx app1') {
             steps {
                 sshagent(['id_rsa']) {
                     sh '''
@@ -11,11 +11,11 @@ pipeline {
                 }
             }
         }
-        stage('Install PHP and dependencies') {
+        stage('Install PHP and dependencies aap1') {
             steps {
                 sshagent(['id_rsa']) {
                     sh '''
-                    ssh test@192.168.56.12 "sudo apt-get install php php-fpm php-mysql php-xml php-gd php-json php-curl -y"
+                    ssh test@192.168.56.12 "sudo apt-get install php php-fpm php-mysql mysql-client -y"
                     '''
                 }
             }
@@ -27,13 +27,53 @@ pipeline {
                     ssh test@192.168.56.12 "sudo apt-get update && sudo apt-get install wget -y"
                     ssh test@192.168.56.12 "wget http://wordpress.org/latest.tar.gz"
                     ssh test@192.168.56.12 "tar -xzvf latest.tar.gz"
-                    ssh test@192.168.56.12 "sudo mv wordpress /var/www/html"
-                    ssh test@192.168.56.12 "sudo chown -R www-data:www-data /var/www/html/wordpress"
+                    '''
+                    sh "ssh test@192.168.56.12 '[ -d /var/www/html/wordpress ] && echo \"Directory already exists\" || echo \"Directory does not exist\"'"
+                    sh '''
+                    output=$(ssh test@192.168.56.12 "[ -d /var/www/html/wordpress ] && echo 1 || echo 0")
+                    if [ $output -eq 0 ]; then
+                        ssh test@192.168.56.12 "sudo mv wordpress /var/www/html"
+                        ssh test@192.168.56.12 "sudo chown -R www-data:www-data /var/www/html/wordpress"
+                    else
+                        echo "Directory already exists, skipping step"
+                    fi
                     '''
                 }
             }
         }
-        stage('Configure Nginx for WordPress') {
+        
+        stage('Configure WordPress app1') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.12 "sudo bash -c 'cd /var/www/html/wordpress && cp wp-config-sample.php wp-config.php'"
+                    ssh test@192.168.56.12 "sudo wget -O /var/www/html/wordpress/wp-keys.php https://api.wordpress.org/secret-key/1.1/salt/"
+                    ssh test@192.168.56.12 "sudo sed -e 's/database_name_here/wordpress/g' -e 's/username_here/wp_user/g' -e 's/password_here/Password#1/g' -e 's/localhost/192.168.56.14/g' -i.bak /var/www/html/wordpress/wp-config.php"
+                    ssh test@192.168.56.12 "sudo sed -i '/#@-/r /var/www/html/wordpress/wp-keys.php' /var/www/html/wordpress/wp-config.php"
+                    ssh test@192.168.56.12 "sudo chown www-data:www-data /var/www/html/wordpress/wp-config.php"
+                    ssh test@192.168.56.12 "sudo chmod 640 /var/www/html/wordpress/wp-config.php"
+                    ssh test@192.168.56.12 "sudo chmod -R 755 /var/www/html/wordpress"
+                    '''
+                }
+            }
+        }
+        
+        stage('Check Apache2 status') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    if ssh test@192.168.56.12 "systemctl is-active apache2" >/dev/null 2>&1; then
+                        echo "Apache2 service is running. Disabling it..."
+                        ssh test@192.168.56.12 "sudo systemctl disable apache2.service"
+                        ssh test@192.168.56.12 "sudo systemctl stop apache2.service"
+                    else
+                        echo "Apache2 service is not running."
+                    fi
+                    '''
+                }
+            }
+        }
+        stage('Configure Nginx for WordPress app1') {
             steps {
                 sshagent(['id_rsa']) {
                     sh '''
@@ -43,15 +83,15 @@ pipeline {
                         listen [::]:80 default_server;
                         
                         root /var/www/html/wordpress;
-                        index index.php;
+                        index index.html index.htm index.nginx-debian.html index.php;
                         
-                        location / {
-                            try_files \$uri \$uri/ /index.php?\$args;
+                        location /wordpress {
+                            try_files \\$uri \\$uri/ /index.php?\\$args;
                         }
                         
-                        location ~ \.php$ {
+                        location ~ \\.php$ {
                             include snippets/fastcgi-php.conf;
-                            fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+                            fastcgi_pass unix:/var/run/php/php-fpm.sock;
                         }
                     }
                     '"
@@ -59,11 +99,117 @@ pipeline {
                 }
             }
         }
-        stage('Restart Nginx') {
+        stage('Restart Nginx app1') {
             steps {
                 sshagent(['id_rsa']) {
                     sh '''
                     ssh test@192.168.56.12 "sudo systemctl restart nginx"
+                    '''
+                }
+            }
+        }
+        stage('Install Nginx app2') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.13 "sudo apt-get update && sudo apt-get install nginx -y"
+                    '''
+                }
+            }
+        }
+        stage('Install PHP and dependencies app2') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.13 "sudo apt-get install php php-fpm php-mysql mysql-client -y"
+                    '''
+                }
+            }
+        }
+        stage('Install WordPress on Application Server 2') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.13 "sudo apt-get update && sudo apt-get install wget -y"
+                    ssh test@192.168.56.13 "wget http://wordpress.org/latest.tar.gz"
+                    ssh test@192.168.56.13 "tar -xzvf latest.tar.gz"
+                    '''
+                    sh "ssh test@192.168.56.13 '[ -d /var/www/html/wordpress ] && echo \"Directory already exists\" || echo \"Directory does not exist\"'"
+                    sh '''
+                    output=$(ssh test@192.168.56.13 "[ -d /var/www/html/wordpress ] && echo 1 || echo 0")
+                    if [ $output -eq 0 ]; then
+                        ssh test@192.168.56.13 "sudo mv wordpress /var/www/html"
+                        ssh test@192.168.56.13 "sudo chown -R www-data:www-data /var/www/html/wordpress"
+                    else
+                        echo "Directory already exists, skipping step"
+                    fi
+                    '''
+                }
+            }
+        }
+        
+        stage('Configure WordPress app2') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.13 "sudo bash -c 'cd /var/www/html/wordpress && cp wp-config-sample.php wp-config.php'"
+                    ssh test@192.168.56.13 "sudo wget -O /var/www/html/wordpress/wp-keys.php https://api.wordpress.org/secret-key/1.1/salt/"
+                    ssh test@192.168.56.13 "sudo sed -e 's/database_name_here/wordpress/g' -e 's/username_here/wp_user/g' -e 's/password_here/Password#1/g' -e 's/localhost/192.168.56.14/g' -i.bak /var/www/html/wordpress/wp-config.php"
+                    ssh test@192.168.56.13 "sudo sed -i '/#@-/r /var/www/html/wordpress/wp-keys.php' /var/www/html/wordpress/wp-config.php"
+                    ssh test@192.168.56.13 "sudo chown www-data:www-data /var/www/html/wordpress/wp-config.php"
+                    ssh test@192.168.56.13 "sudo chmod 640 /var/www/html/wordpress/wp-config.php"
+                    ssh test@192.168.56.13 "sudo chmod -R 755 /var/www/html/wordpress"
+                    '''
+                }
+            }
+        }
+        
+        stage('Check Apache2 status app2') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    if ssh test@192.168.56.13 "systemctl is-active apache2" >/dev/null 2>&1; then
+                        echo "Apache2 service is running. Disabling it..."
+                        ssh test@192.168.56.13 "sudo systemctl disable apache2.service"
+                        ssh test@192.168.56.13 "sudo systemctl stop apache2.service"
+                    else
+                        echo "Apache2 service is not running."
+                    fi
+                    '''
+                }
+            }
+        }
+        stage('Configure Nginx for WordPress app2') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.13 "sudo sh -c 'cat <<EOF > /etc/nginx/sites-available/default
+                    server {
+                        listen 80 default_server;
+                        listen [::]:80 default_server;
+                        
+                        root /var/www/html/wordpress;
+                        index index.html index.htm index.nginx-debian.html index.php;
+                        
+                        location /wordpress {
+                            try_files \\$uri \\$uri/ /index.php?\\$args;
+                        }
+                        
+                        location ~ \\.php$ {
+                            include snippets/fastcgi-php.conf;
+                            fastcgi_pass unix:/var/run/php/php-fpm.sock;
+                        }
+                    }
+                    '"
+                    '''
+                }
+            }
+        }
+        stage('Restart Nginx app2') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.13 "sudo systemctl restart nginx"
                     '''
                 }
             }

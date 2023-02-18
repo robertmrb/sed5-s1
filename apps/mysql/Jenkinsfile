@@ -1,9 +1,12 @@
-
 pipeline {
     agent any
-    parameters {
-        string(name: 'WORDPRESS_DB_PASSWORD', defaultValue: '', description: 'Parola pentru utilizatorul bazei de date WordPress')
+
+    environment {
+        DB_NAME = 'wordpress'
+        DB_USER = 'wp_user'
+        DB_PASSWORD = 'Password#1'
     }
+
     stages {
         stage('Install MySQL Server') {
             steps {
@@ -18,52 +21,41 @@ pipeline {
             steps {
                 sshagent(['id_rsa']) {
                     sh """
-                    ssh test@192.168.56.14 \"sudo mysql -e 'CREATE DATABASE IF NOT EXISTS wordpress;'\"
-                    ssh test@192.168.56.14 \"sudo mysql -e 'CREATE USER 'wp_user'@'localhost' IDENTIFIED BY '${params.WORDPRESS_DB_PASSWORD}';'\"
-                    ssh test@192.168.56.14 \"sudo mysql -e 'GRANT ALL PRIVILEGES ON wordpress.* TO 'wp_user'@'localhost';'\"
+                    ssh test@192.168.56.14 "sudo mysql <<EOF
+                        CREATE DATABASE IF NOT EXISTS ${env.DB_NAME};
+                        CREATE USER IF NOT EXISTS '${env.DB_USER}'@'localhost' IDENTIFIED BY '${env.DB_PASSWORD}';
+                        CREATE USER IF NOT EXISTS '${env.DB_USER}'@'192.168.56.12' IDENTIFIED BY '${env.DB_PASSWORD}';
+                        CREATE USER IF NOT EXISTS '${env.DB_USER}'@'192.168.56.13' IDENTIFIED BY '${env.DB_PASSWORD}';
+                        ALTER USER '${env.DB_USER}'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${env.DB_PASSWORD}';
+                        ALTER USER '${env.DB_USER}'@'192.168.56.12' IDENTIFIED WITH caching_sha2_password BY '${env.DB_PASSWORD}';
+                        ALTER USER '${env.DB_USER}'@'192.168.56.13' IDENTIFIED WITH caching_sha2_password BY '${env.DB_PASSWORD}';
+                        GRANT ALL PRIVILEGES ON ${env.DB_NAME}.* TO '${env.DB_USER}'@'localhost';
+                        GRANT ALL PRIVILEGES ON ${env.DB_NAME}.* TO '${env.DB_USER}'@'192.168.56.12';
+                        GRANT ALL PRIVILEGES ON ${env.DB_NAME}.* TO '${env.DB_USER}'@'192.168.56.13';
+                        FLUSH PRIVILEGES;
+EOF
+                    "
                     """
                 }
             }
         }
+        stage('Update MySQL Configuration') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh """
+                    ssh test@192.168.56.14 "sudo sed -i 's/bind-address[[:space:]]*=.*/bind-address    = 0.0.0.0/' /etc/mysql/mysql.conf.d/mysqld.cnf"
+                    """
+                }
+            }
+        }
+        stage('Restart MySQL Service') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.14 "sudo systemctl restart mysql"
+                    '''
+                }
+            }
+        }   
     }
 }
-
-
-
-// pipeline {
-//     agent any
-
-//     stages {
-//         stage('Install MySQL Server') {
-//             steps {
-//                 sshagent(['id_rsa']) {
-//                     sh '''
-//                     ssh test@192.168.56.14 "sudo apt-get update && sudo apt-get install mysql-server mysql-client -y"
-//                     '''
-//                 }
-//             }
-//         }
-//         stage('Create WordPress Database and User') {
-//             steps {
-//                 sshagent(['id_rsa']) {
-//                     sh '''
-//                     ssh test@192.168.56.14 "sudo mysql -e '<<EOF
-//                     CREATE DATABASE IF NOT EXISTS wordpress;
-//                     CREATE USER `new_user`@`localhost` IDENTIFIED BY `Password@12`;
-//                     GRANT ALL PRIVILEGES ON wordpress.* TO `new_user`@`localhost`;
-//                     FLUSH PRIVILEGES;
-//                     EOF
-//                     '"
-//                     '''
-//                 }
-//             }
-//         }
-//     }
-// }
-
-//                     sh(script:'''
-//                     sudo mysql -e -h 192.168.56.14 "CREATE USER 'new_user'@'localhost' IDENTIFIED BY 'Password@12';"
-//                     ''')
-//                     ssh test@192.168.56.14 "sudo mysql -e 'CREATE DATABASE IF NOT EXISTS wordpress;'"
-//                     ssh test@192.168.56.14 "sudo mysql -e 'CREATE USER 'new_user'@'localhost' IDENTIFIED BY 'Password@12';'"
-//                     ssh test@192.168.56.14 "sudo mysql -e 'GRANT ALL PRIVILEGES ON wordpress.* TO `new_user`@`localhost`;'"
