@@ -1,0 +1,39 @@
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            parallel {
+                stage('MySQL') {
+                    steps {
+                        script {
+                            checkout scm
+                            dir('apps/mysql') {
+                                sh 'jenkins/build.sh'
+                            }
+                        }
+                    }
+                }
+                stage('Nginx') {
+                    steps {
+                        script {
+                            checkout scm
+                            dir('apps/nginx') {
+                                sh 'jenkins/build.sh'
+                            }
+                        }
+                    }
+                }
+                stage('Wordpress') {
+                    steps {
+                        script {
+                            checkout scm
+                            dir('apps/wordpress') {
+                                sh 'jenkins/build.sh'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
