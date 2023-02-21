@@ -8,7 +8,7 @@ pipeline {
                         script {
                             checkout scm
                             dir('apps/mysql') {
-                                sh './Jenkins/build.sh'
+                                sh './Jenkinsfile/build.sh'
                             }
                         }
                     }
@@ -18,7 +18,7 @@ pipeline {
                         script {
                             checkout scm
                             dir('apps/nginx') {
-                                sh './Jenkins/build.sh'
+                                sh './Jenkinsfile/build.sh'
                             }
                         }
                     }
@@ -28,7 +28,7 @@ pipeline {
                         script {
                             checkout scm
                             dir('apps/wordpress') {
-                                sh './Jenkins/build.sh'
+                                sh './Jenkinsfile/build.sh'
                             }
                         }
                     }
