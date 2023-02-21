@@ -40,6 +40,7 @@ pipeline {
                 sshagent(['id_rsa']) {
                     sh '''
                     ssh test@192.168.56.11 "sudo systemctl restart nginx"
+                    ssh test@192.168.56.11 "sudo systemctl status nginx"
                     '''
                 }
             }

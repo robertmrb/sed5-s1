@@ -142,6 +142,11 @@ if [ ! -f /lib/systemd/system/jenkins.service ]; then
   sudo systemctl start jenkins.service
 fi
 
+echo "Install ngrok for githook"
+sudo curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list && sudo apt update && sudo apt install ngrok
+sudo ngrok config add-authtoken 2M3Vy3AbGKdsqyQUjQ0geMQWh61_4xRFmd6pRpaijaCB3Z5dW
+sudo ngrok http 80 --log=stdout > ngrok.log &
+
 SCRIPT
 
 Vagrant.configure("2") do |config|
