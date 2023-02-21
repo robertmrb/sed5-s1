@@ -52,7 +52,18 @@ pipeline {
                     ssh test@192.168.56.12 "sudo sed -i '/#@-/r /var/www/html/wordpress/wp-keys.php' /var/www/html/wordpress/wp-config.php"
                     ssh test@192.168.56.12 "sudo chown www-data:www-data /var/www/html/wordpress/wp-config.php"
                     ssh test@192.168.56.12 "sudo chmod 640 /var/www/html/wordpress/wp-config.php"
-                    ssh test@192.168.56.12 "sudo chmod -R 755 /var/www/html/wordpress"
+                    ssh test@192.168.56.12 "sudo chmod -R 777 /var/www/html/wordpress"
+                    '''
+                    sh "ssh test@192.168.56.12 '[ -d /var/www/html/wordpress/wp-content/uploads ] && echo \"Directory already exists\" || echo \"Directory does not exist\"'"
+                    sh '''
+                    output=$(ssh test@192.168.56.12 "[ -d /var/www/html/wordpress/wp-content/uploads ] && echo 1 || echo 0")
+                    if [ $output -eq 0 ]; then
+                        ssh test@192.168.56.12 "sudo mkdir /var/www/html/wordpress/wp-content/uploads"
+                        ssh test@192.168.56.12 "sudo chmod 777 /var/www/html/wordpress/wp-content/uploads"
+                        ssh test@192.168.56.12 "sudo chown www-data:www-data /var/www/html/wordpress/wp-content/uploads"
+                    else
+                        echo "Directory already exists, skipping step"
+                    fi
                     '''
                 }
             }
@@ -77,7 +88,7 @@ pipeline {
             steps {
                 sshagent(['id_rsa']) {
                     sh '''
-                    ssh test@192.168.56.12 "sudo sh -c 'cat <<EOF > /etc/nginx/sites-available/default
+                    ssh test@192.168.56.12 "sudo sh -c 'cat <<'EOF' > /etc/nginx/sites-available/default
                     server {
                         listen 80 default_server;
                         listen [::]:80 default_server;
@@ -85,11 +96,11 @@ pipeline {
                         root /var/www/html/wordpress;
                         index index.html index.htm index.nginx-debian.html index.php;
                         
-                        location /wordpress {
-                            try_files \\$uri \\$uri/ /index.php?\\$args;
+                        location /wordpress/ {
+                            try_files $uri $uri/ /index.php?$args;
                         }
                         
-                        location ~ \\.php$ {
+                        location ~ .php$ {
                             include snippets/fastcgi-php.conf;
                             fastcgi_pass unix:/var/run/php/php-fpm.sock;
                         }
@@ -123,7 +134,6 @@ pipeline {
                     sh '''
                     ssh test@192.168.56.13 "sudo apt-get install php php-fpm php-mysql mysql-client -y"
                     '''
-                    ssh test@192.168.56.13 "echo 'Done BEST DONE'"
                 }
             }
         }
@@ -159,7 +169,18 @@ pipeline {
                     ssh test@192.168.56.13 "sudo sed -i '/#@-/r /var/www/html/wordpress/wp-keys.php' /var/www/html/wordpress/wp-config.php"
                     ssh test@192.168.56.13 "sudo chown www-data:www-data /var/www/html/wordpress/wp-config.php"
                     ssh test@192.168.56.13 "sudo chmod 640 /var/www/html/wordpress/wp-config.php"
-                    ssh test@192.168.56.13 "sudo chmod -R 755 /var/www/html/wordpress"
+                    ssh test@192.168.56.13 "sudo chmod -R 777 /var/www/html/wordpress"
+                    '''
+                    sh "ssh test@192.168.56.13 '[ -d /var/www/html/wordpress/wp-content/uploads ] && echo \"Directory already exists\" || echo \"Directory does not exist\"'"
+                    sh '''
+                    output=$(ssh test@192.168.56.13 "[ -d /var/www/html/wordpress/wp-content/uploads ] && echo 1 || echo 0")
+                    if [ $output -eq 0 ]; then
+                        ssh test@192.168.56.13 "sudo mkdir /var/www/html/wordpress/wp-content/uploads"
+                        ssh test@192.168.56.13 "sudo chmod 777 /var/www/html/wordpress/wp-content/uploads"
+                        ssh test@192.168.56.12 "sudo chown www-data:www-data /var/www/html/wordpress/wp-content/uploads"
+                    else
+                        echo "Directory already exists, skipping step"
+                    fi
                     '''
                 }
             }
@@ -193,10 +214,10 @@ pipeline {
                         index index.html index.htm index.nginx-debian.html index.php;
                         
                         location /wordpress {
-                            try_files \\$uri \\$uri/ /index.php?\\$args;
+                            try_files $uri $uri/ /index.php?$args;
                         }
                         
-                        location ~ \\.php$ {
+                        location ~ .php$ {
                             include snippets/fastcgi-php.conf;
                             fastcgi_pass unix:/var/run/php/php-fpm.sock;
                         }
@@ -211,6 +232,19 @@ pipeline {
                 sshagent(['id_rsa']) {
                     sh '''
                     ssh test@192.168.56.13 "sudo systemctl restart nginx"
+                    '''
+                }
+            }
+        }
+        stage('Configure Setup WordPress app2') {
+            steps {
+                sshagent(['id_rsa']) {
+                    sh '''
+                    ssh test@192.168.56.13 "sudo curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar"
+                    ssh test@192.168.56.13 "sudo php wp-cli.phar --info"
+                    ssh test@192.168.56.13 "sudo chmod +x wp-cli.phar"
+                    ssh test@192.168.56.13 "sudo mv wp-cli.phar /usr/local/bin/wp"
+                    ssh test@192.168.56.13 "wp core install --path='/var/www/html/wordpress' --url='$siteurl' --title='TeSt' --admin_user='test' --admin_password='test' --admin_email='test@test.ts'"
                     '''
                 }
             }
