@@ -27,18 +27,46 @@ function create_user {
   fi
 }
 
+function set_authorized_keys_jenkins {
+  if [[ ! -d /home/$1/.ssh ]]; then
+    echo "Creating .ssh folder for $1 ssh access"
+    mkdir /home/$1/.ssh
+  fi
+  
+  if [[ ! -f /vagrant/apps/jenkins/id_rsa.pub ]]; then
+    echo "Make sure the vagrant folder is mounted and/or the file test exists!"
+    exit 1
+  fi
+  
+  cat /vagrant/apps/jenkins/id_rsa.pub > /home/$1/.ssh/id_rsa.pub
+
+  if [[ ! -f /vagrant/apps/jenkins/id_rsa ]]; then
+    echo "Make sure the vagrant folder is mounted and/or the file test exists!"
+    exit 1
+  fi
+  
+  cat /vagrant/apps/jenkins/id_rsa > /home/$1/.ssh/id_rsa
+
+  chown -R $1:$1 /home/$1/.ssh
+  chmod 755 /home/$1/.ssh/id_rsa.pub
+  chmod 600 /home/$1/.ssh/id_rsa
+
+  echo "StrictHostKeyChecking no" >> /home/$1/.ssh/config
+
+}
+
 function set_authorized_keys {
   if [[ ! -d /home/$1/.ssh ]]; then
     echo "Creating .ssh folder for $1 ssh access"
     mkdir /home/$1/.ssh
   fi
   
-  if [[ ! -f /vagrant/apps/jenkins/test ]]; then
+  if [[ ! -f /vagrant/apps/jenkins/id_rsa.pub ]]; then
     echo "Make sure the vagrant folder is mounted and/or the file test exists!"
     exit 1
   fi
   
-  cat /vagrant/apps/jenkins/test > /home/$1/.ssh/authorized_keys
+  cat /vagrant/apps/jenkins/id_rsa.pub > /home/$1/.ssh/authorized_keys
 
   chown -R $1:$1 /home/$1/.ssh
   chmod 600 /home/$1/.ssh/authorized_keys
@@ -56,11 +84,11 @@ function add_to_sudoers {
 
 if [ `hostname` == "jenkins" ]; then
   create_user "jenkins"
-#  set_authorized_keys "jenkins"
+  set_authorized_keys_jenkins "jenkins"
 #  add_to_sudoers "jenkins"
 else
   create_user "test"
-#  set_authorized_keys "test"
+  set_authorized_keys "test"
   add_to_sudoers "test"
 fi
 
@@ -145,7 +173,7 @@ fi
 echo "Install ngrok for githook"
 sudo curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list && sudo apt update && sudo apt install ngrok
 sudo ngrok config add-authtoken 2M3Vy3AbGKdsqyQUjQ0geMQWh61_4xRFmd6pRpaijaCB3Z5dW
-sudo ngrok http 80 --log=stdout > ngrok.log &
+sudo ngrok http http://192.168.56.10:8080 --log=stdout > ngrok.log &
 
 SCRIPT
 

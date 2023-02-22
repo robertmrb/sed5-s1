@@ -8,6 +8,8 @@ commons-text-api.jpi
 commons-lang3-api.jpi
 git.jpi
 data-tables-api.jpi
+github-pullrequest.jpi
+authentication-tokens.jpi
 ace-editor.jpi
 antisamy-markup-formatter.jpi
 mina-sshd-api-common.jpi
@@ -96,3 +98,7 @@ workflow-scm-step.jpi
 workflow-step-api.jpi
 workflow-support.jpi
 ws-cleanup.jpi
+popper-api.jpi
+workflow-multibranch.jpi
+mina-sshd-api-common.jpi
+workflow-multibranch.jpi
