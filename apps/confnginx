@@ -1,6 +1,6 @@
 server {
             listen 80;
-            root /var/www/html/wordpress/public_html;
+            root /var/www/html/wordpress;
             index index.php index.html;
             server_name 192.168.56.12;
 
