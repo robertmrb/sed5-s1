@@ -166,7 +166,7 @@ pipeline {
             steps {
                 sshagent(['id_rsa']) {
                 sh ''' 
-                ssh test@192.168.56.13 "sudo curl -o /etc/nginx/sites-available/wordpress https://raw.githubusercontent.com/robertmrb/sed5-s1/master/apps/confnginx"
+                ssh test@192.168.56.13 "sudo curl -o /etc/nginx/sites-available/wordpress https://raw.githubusercontent.com/robertmrb/sed5-s1/master/apps/confnginx2"
                 ssh test@192.168.56.13 "sudo ln -sf /etc/nginx/sites-available/wordpress /etc/nginx/sites-enabled/"
                 '''
                 }
