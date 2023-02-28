@@ -16,16 +16,17 @@ pipeline {
                 sshagent(['id_rsa']) {
                     sh '''
                     ssh test@192.168.56.11 "sudo bash -c 'cat > /etc/nginx/sites-available/default <<EOF
-                    upstream wordpress {
+                    upstream wordpress_backend {
                         server 192.168.56.12;
                         server 192.168.56.13;
                     }
                     
                     server {
                         listen 80 default_server;
-                        server_name _;
+                        listen [::]:80 default_server;
+                        
                         location / {
-                            proxy_pass http://wordpress;
+                            proxy_pass http://wordpress_backend;
                         }
                     }
                     '"
