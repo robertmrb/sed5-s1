@@ -97,7 +97,7 @@ SCRIPT
 
 $jenkins_setup_war_package = <<SCRIPT
 #!/bin/bash
-JENKINS_VERSION="2.375.2"
+JENKINS_VERSION="2.387.2"
 # JENKINS_VERSION="2.340"
 JENKINS_URL="https://get.jenkins.io/war-stable/${JENKINS_VERSION}/jenkins.war"
 # JENKINS_URL="https://get.jenkins.io/war/${JENKINS_VERSION}/jenkins.war"
