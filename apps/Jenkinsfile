@@ -8,7 +8,8 @@ pipeline {
                         script {
                             checkout scm
                             dir('apps/mysql') {
-                                sh './Jenkinsfile/build.sh'
+                                // Se rulează fișierul Jenkinsfile pentru aplicația MySQL
+                                load 'Jenkinsfile'
                             }
                         }
                     }
@@ -18,7 +19,8 @@ pipeline {
                         script {
                             checkout scm
                             dir('apps/nginx') {
-                                sh './Jenkinsfile/build.sh'
+                                // Se rulează fișierul Jenkinsfile pentru aplicația Nginx
+                                load 'Jenkinsfile'
                             }
                         }
                     }
@@ -28,7 +30,8 @@ pipeline {
                         script {
                             checkout scm
                             dir('apps/wordpress') {
-                                sh './Jenkinsfile/build.sh'
+                                // Se rulează fișierul Jenkinsfile pentru aplicația Wordpress
+                                load 'Jenkinsfile'
                             }
                         }
                     }
